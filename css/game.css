@@ -1,0 +1,155 @@
+/* Tela de jogo: cena (em cima, à direita), coluna com minimapa + cartão (esquerda), HUD embaixo.
+   Usa o mesmo padrão sóbrio (--ui-*) da criação de personagem. */
+
+.game{
+  position:absolute;inset:0;display:grid;gap:1.2vh 1vw;padding:1.6vh 1.2vw;
+  grid-template-columns:minmax(190px,23%) minmax(0,1fr);
+  grid-template-rows:minmax(0,1fr) minmax(150px,30vh);
+  grid-template-areas:"side scene" "hud hud";
+  background:var(--ui-bg);color:var(--ui-text);
+  font-size:clamp(8px,min(.95vw,1.7vh),12px);line-height:1.7;
+}
+.g-box{background:var(--ui-panel);box-shadow:0 0 0 2px var(--ui-line), 0 0 0 4px #000;min-height:0;min-width:0}
+
+/* coluna esquerda */
+.g-side{grid-area:side;display:grid;grid-template-rows:minmax(0,1fr) auto;gap:1.6vh;min-height:0}
+.g-map{display:flex;flex-direction:column;padding:1em;gap:.8em}
+.g-map-head{display:flex;align-items:center;justify-content:space-between;gap:.6em}
+.g-dungeon{margin:0;color:var(--ui-accent)}
+.g-btn.small{padding:.45em .7em;font-size:.85em}
+.mm{flex:1;display:grid;place-items:center;min-height:0;overflow:hidden}
+.mm-grid{display:grid;gap:.5em;grid-template-columns:repeat(var(--cols),2.6em);grid-template-rows:repeat(var(--rows),2.6em)}
+.mm-cell{
+  display:grid;place-items:center;padding:0;border:0;cursor:pointer;font:inherit;
+  background:var(--ui-panel-2);color:var(--ui-muted);box-shadow:inset 0 0 0 2px var(--ui-line);
+}
+.mm-cell .icon{width:1.5em;height:1.5em}
+.mm-cell.fog{background:#0f0e14;color:var(--ui-dim);box-shadow:inset 0 0 0 2px #1d1b25}
+.mm-cell.current{color:var(--ui-accent);box-shadow:inset 0 0 0 2px var(--ui-accent);animation:pulsar 1.4s steps(2) infinite}
+.mm-cell:hover{box-shadow:inset 0 0 0 2px var(--ui-line-2)}
+.mm-cell.current:hover{box-shadow:inset 0 0 0 2px var(--ui-accent)}
+
+.g-hero{padding:1em 1.1em}
+.hc-top{display:flex;align-items:center;gap:1em}
+.hc-sprite{image-rendering:pixelated;image-rendering:crisp-edges;flex:none}
+.hc-id p{margin:0}
+.hc-name{color:var(--ui-accent);word-break:break-word}
+.hc-sub{color:var(--ui-muted);font-size:.9em}
+.hc-bars{display:grid;gap:.5em;margin-top:.9em}
+.bar{display:grid;grid-template-columns:4.6em 1fr auto;align-items:center;gap:.6em;font-size:.9em}
+.bar-label{color:var(--ui-muted)}
+.bar-track{height:.9em;background:#0b0a10;box-shadow:inset 0 0 0 1px #000, 0 0 0 1px var(--ui-line)}
+.bar-track i{display:block;height:100%;transition:width .6s ease-out}
+.bar.hp i{background:#8a3a3a;box-shadow:inset 0 .25em 0 #a85050}
+.bar.mp i{background:#3a5a8a;box-shadow:inset 0 .25em 0 #5074a8}
+.bar.res i{background:#8a6a3a;box-shadow:inset 0 .25em 0 #a8864e}
+.bar-value{min-width:5.5em;text-align:right}
+
+/* cena */
+.g-scene{grid-area:scene;position:relative;display:grid;place-items:center;overflow:hidden;background:#000}
+.g-canvas{width:100%;height:100%;object-fit:contain;image-rendering:pixelated;image-rendering:crisp-edges}
+.g-room-name{
+  position:absolute;left:1em;top:.8em;margin:0;padding:.4em .8em;
+  background:rgba(12,11,18,.8);box-shadow:0 0 0 2px var(--ui-line);color:var(--ui-accent);
+}
+
+/* HUD: log + ações */
+.g-hud{grid-area:hud;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:1vw;min-height:0}
+.g-log{overflow:auto;padding:1em 1.2em;scrollbar-width:thin;scrollbar-color:var(--ui-line-2) transparent}
+.g-log p{margin:0 0 .45em}
+.g-log p.muted{color:var(--ui-muted)}
+.g-log p.warn{color:var(--ui-danger)}
+/* ações: à esquerda o que a sala oferece (falar, portas...), à direita o menu fixo 2x2 */
+.g-actions{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:1em;padding:1em;min-height:0}
+.g-context{display:flex;flex-direction:column;gap:.6em;overflow:auto;min-height:0;scrollbar-width:thin;scrollbar-color:var(--ui-line-2) transparent}
+.g-group{display:flex;flex-wrap:wrap;gap:.6em}
+.g-group[hidden]{display:none}
+.g-menu{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6em;align-content:start;padding-left:1em;border-left:2px solid var(--ui-line)}
+.g-menu .g-btn{padding:.75em .25em;font-size:.88em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.g-btn{
+  font:inherit;cursor:pointer;border:0;padding:.75em 1em;
+  color:var(--ui-muted);background:var(--ui-panel-2);box-shadow:inset 0 0 0 2px var(--ui-line);
+}
+.g-btn:hover{color:var(--ui-text);box-shadow:inset 0 0 0 2px var(--ui-line-2)}
+.g-btn.accent{color:var(--ui-accent);box-shadow:inset 0 0 0 2px var(--ui-accent-dark)}
+.g-btn.accent:hover{box-shadow:inset 0 0 0 2px var(--ui-accent)}
+.g-btn:disabled{opacity:.35;cursor:not-allowed}
+.g-btn:focus-visible{outline:2px dotted var(--ui-text);outline-offset:3px}
+
+/* janelas (Itens, Estatísticas): deslizam de baixo */
+.g-panel{position:absolute;inset:0;display:grid;place-items:center;background:rgba(0,0,0,.6);z-index:5}
+.g-panel[hidden]{display:none}
+.g-panel-box{
+  width:min(720px,92vw);max-height:84vh;overflow:auto;padding:1.6em 1.8em;
+  background:var(--ui-panel);box-shadow:0 0 0 2px var(--ui-line), 0 0 0 4px #000;
+  transform:translateY(4vh);opacity:0;transition:transform .25s ease-out, opacity .25s ease-out;
+  scrollbar-width:thin;scrollbar-color:var(--ui-line-2) transparent;
+}
+.g-panel.open .g-panel-box{transform:none;opacity:1}
+.g-panel-head{display:flex;justify-content:space-between;align-items:center;gap:1em}
+.g-panel-title{margin:0;font-weight:400;font-size:1.2em;color:var(--ui-accent)}
+.g-panel-body h3{margin:1.4em 0 .6em;font-weight:400;font-size:1em;color:var(--ui-accent)}
+.g-sheet-name{color:var(--ui-accent);font-size:1.1em;margin:1em 0 .2em}
+.g-muted{color:var(--ui-muted)}
+
+/* enquanto passa de sala, os botões ficam esmaecidos (os comandos esperam) */
+.g-busy .g-actions,.g-busy .mm{opacity:.55;transition:opacity .15s}
+
+/* abertura: a cena ocupa a tela inteira; o HUD surge depois que o herói levanta */
+.g-cinematic .g-scene{grid-column:1 / -1;grid-row:1 / -1;z-index:2}
+.g-cinematic .g-side,.g-cinematic .g-hud,.g-cinematic .g-room-name{opacity:0;pointer-events:none}
+.g-fade{position:absolute;inset:0;z-index:20;background:#000;opacity:0;pointer-events:none}
+
+/* caixa de diálogo */
+.g-hud{position:relative}
+.dlg{
+  position:absolute;z-index:3;display:flex;gap:1.2em;align-items:stretch;
+  padding:1.1em 1.3em;background:rgba(12,11,18,.96);color:var(--ui-text);cursor:pointer;
+  box-shadow:0 0 0 2px var(--ui-line-2), 0 0 0 4px #000;font-size:1.15em;line-height:1.75;
+  transform:translateY(1.2em);opacity:0;transition:transform .2s ease-out, opacity .2s ease-out;
+}
+.dlg-scene{left:2%;right:2%;bottom:3%}          /* sobre a cena (abertura em tela cheia) */
+.dlg-hud{inset:0;background:var(--ui-panel)}   /* no lugar do log e das ações */
+.dlg-hud .dlg-portrait{align-self:flex-start;width:auto;padding:.6em .8em}
+.dlg-hud .dlg-face{width:7.2em;height:8.4em}
+.dlg.open{transform:none;opacity:1}
+.dlg-portrait{flex:none;display:grid;place-items:center;width:5.6em;background:var(--ui-panel-2);box-shadow:inset 0 0 0 2px var(--ui-line)}
+.dlg-face{width:4.8em;height:5.6em;image-rendering:pixelated;image-rendering:crisp-edges}
+.dlg-main{flex:1;min-width:0;position:relative;padding-bottom:1.2em}
+.dlg-name{margin:0 0 .4em;color:var(--ui-accent)}
+.dlg-text{margin:0;min-height:3.4em}
+.dlg-next{position:absolute;right:0;bottom:0;font-size:.75em;color:var(--ui-muted);opacity:0}
+.dlg.ready .dlg-next{opacity:1;animation:piscar-dlg 1s steps(2) infinite}
+
+/* abertura da história */
+.intro{position:absolute;inset:0;z-index:10;background:#000;display:grid;place-items:center;cursor:pointer}
+.intro-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;image-rendering:pixelated;image-rendering:crisp-edges}
+.intro-text{
+  position:relative;margin:0;padding:0 8vw;max-width:60em;text-align:center;
+  font-size:clamp(10px,min(1.6vw,2.6vh),20px);line-height:1.9;color:var(--ui-text);text-shadow:0 .2em 0 #000;
+}
+.intro-text.show{animation:surgir-intro .6s ease-out both}
+.intro-text.last{color:var(--ui-accent)}
+.intro-hint{position:absolute;bottom:5vh;margin:0;font-size:clamp(7px,1vw,11px);color:var(--ui-dim)}
+
+@keyframes piscar-dlg{50%{opacity:.2}}
+@keyframes surgir-intro{from{opacity:0}to{opacity:1}}
+@keyframes pulsar{50%{box-shadow:inset 0 0 0 2px var(--ui-accent-dark)}}
+
+/* celular: cena em cima, depois minimapa + cartão lado a lado, depois o HUD */
+@media (max-width:760px){
+  .game{
+    grid-template-columns:1fr;grid-template-rows:auto auto minmax(0,1fr);
+    grid-template-areas:"scene" "side" "hud";font-size:clamp(8px,2.4vw,11px);overflow:auto;
+  }
+  .g-scene{aspect-ratio:16/9}
+  .g-side{grid-template-columns:1fr 1fr;grid-template-rows:auto}
+  .g-hud{grid-template-columns:1fr;grid-template-rows:minmax(90px,auto) auto}
+  .g-log{max-height:22vh}
+  .g-actions{grid-template-columns:1fr}
+  .g-menu{padding:1em 0 0;border-left:0;border-top:2px solid var(--ui-line)}
+}
+@media (prefers-reduced-motion:reduce){
+  .mm-cell.current{animation:none}
+  .bar-track i,.g-panel-box{transition:none}
+}

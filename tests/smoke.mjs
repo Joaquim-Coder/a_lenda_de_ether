@@ -155,23 +155,154 @@ try {
   await b.screenshot(path.join(OUT, 'criacao-3-nome.png'));
   await b.key('Enter'); await b.wait(200);
 
-  // ---------- jogo criado e salvo ----------
-  check('Começar abre a tela de jogo', await b.eval(`!!document.querySelector('.hero-card')`));
-  check('Tela de jogo mostra o nome', (await q('.hero-name')) === 'Lia da Silva');
-  check('Tela de jogo mostra raça e classe', (await q('.hero-card')).includes('Elfo Mago'));
-  check('Diz que o jogo foi salvo', (await q('.placeholder .hint')).includes('Jogo salvo'));
+  // ---------- tela de jogo: primeira dungeon ----------
+  const room = () => q('.g-room-name');
+  const logText = () => q('.g-log');
+  const cells = () => b.eval(`[...document.querySelectorAll('.mm-cell')].map(c => c.dataset.room + ':' + c.className.replace('mm-cell ', '')).sort().join(' ')`);
+  const scenePixels = `(() => { const c = document.querySelector('.g-canvas'); const d = c.getContext('2d').getImageData(0,0,c.width,c.height).data;
+    let lit = 0, h = 0; for (let i=0;i<d.length;i+=4){ if (d[i]+d[i+1]+d[i+2] > 90) lit++; h = (h*31 + d[i] + d[i+1]*3 + d[i+2]*7) % 1e9; } return { lit, h }; })()`;
+
+  const STEP = 650;   // tempo de uma passagem de sala (animada) com folga
+  // avança uma caixa de diálogo até fechar; devolve as falas vistas
+  async function readDialog(max = 20){
+    const seen = [];
+    for (let i = 0; i < max && await b.eval(`!!document.querySelector('.dlg')`); i++){
+      await b.wait(60);
+      // se a linha ainda está sendo escrita, Enter completa; senão já está pronta
+      if (!(await b.eval(`document.querySelector('.dlg').classList.contains('ready')`))) await b.key('Enter');
+      seen.push(await q('.dlg-text'));
+      await b.key('Enter');          // passa para a próxima (ou fecha)
+    }
+    return seen;
+  }
+
+  // ---------- abertura da história ----------
+  check('Começar abre a tela de jogo', await b.eval(`!!document.querySelector('.game')`));
+  check('Novo jogo começa pela abertura (tela preta)', await b.eval(`!!document.querySelector('.intro')`));
+  check('HUD fica escondido durante a abertura', await b.eval(`document.querySelector('.game').classList.contains('g-cinematic')`));
+  await b.wait(900);
+  check('Texto da abertura aparece letra por letra', (await q('.intro-text')) === 'Escuridão.', await q('.intro-text'));
+  await b.screenshot(path.join(OUT, 'abertura-1-texto.png'));
+  await b.key('Enter');
+  check('Enter passa para a próxima linha', (await q('.intro-text')).length < 'O frio da pedra molhada contra o rosto.'.length);
+  await b.key('Enter');
+  check('Enter de novo completa a linha', (await q('.intro-text')) === 'O frio da pedra molhada contra o rosto.');
+  await b.key('ArrowRight');
+  check('Setas não fazem nada durante a abertura', await b.eval(`!!document.querySelector('.intro')`));
+  await b.key('Escape');
+  check('Esc pula o texto', (await q('.intro-text')) === '');
+  await b.wait(400);
+  await b.screenshot(path.join(OUT, 'abertura-2-clareando.png'));
+  await b.wait(1300);
+  check('Tela clareia e a abertura some', await b.eval(`!document.querySelector('.intro')`));
+  await b.screenshot(path.join(OUT, 'abertura-3-desmaiado.png'));
+  await b.wait(1500);
+  await b.screenshot(path.join(OUT, 'abertura-4-levantando.png'));
+  await b.wait(1300);
+  check('Depois de levantar, o herói pensa alto (caixa de diálogo)', (await q('.dlg-name')) === 'Lia da Silva');
+  check('Caixa de diálogo tem retrato', await b.eval(`!!document.querySelector('.dlg .dlg-face')`));
+  await b.key('ArrowRight');
+  check('Com a caixa aberta, as setas não andam', (await room()) === 'Salão Abandonado');
+  await b.wait(1200);
+  await b.screenshot(path.join(OUT, 'abertura-5-pensando.png'));
+  const wake = await readDialog();
+  check('O herói fala as 3 linhas do despertar', wake.length === 3 && wake[0].startsWith('Ugh'), JSON.stringify(wake));
+  await b.wait(1000);
+  check('Depois da abertura o HUD aparece', !(await b.eval(`document.querySelector('.game').classList.contains('g-cinematic')`)));
+  check('Abertura fica marcada como vista no save', (await b.eval(`JSON.parse(localStorage.getItem('lenda-de-ether:save')).state.flags.introSeen`)) === true);
+
+  // ---------- HUD ----------
+  check('Cartão mostra o nome', (await q('.hc-name')) === 'Lia da Silva');
+  check('Cartão mostra raça, classe e nível', (await q('.hc-sub')) === 'Elfo Mago · Nv 1');
+  check('Cartão mostra vida e mana cheias', (await q('.bar.hp .bar-value')) === '70/70' && (await q('.bar.mp .bar-value')) === '110/110');
+  check('Mago não mostra barra de recurso extra (usa a mana)', (await b.eval(`document.querySelectorAll('.bar.res').length`)) === 0);
+  check('Começa no Salão Abandonado', (await room()) === 'Salão Abandonado');
+  check('Log descreve a sala', (await logText()).includes('musgo'));
+  check('Minimapa: sala atual e vizinha em névoa', (await cells()) === 'galeria:fog salao:current', await cells());
+  const sc1 = await b.eval(scenePixels);
+  check('Cena da sala desenhada', sc1.lit > 1500, `${sc1.lit} pixels claros`);
+  const idleFrames = new Set();
+  for (let i = 0; i < 8; i++){ idleFrames.add((await b.eval(scenePixels)).h); await b.wait(150); }
+  check('Herói parado continua animado (respira/pisca)', idleFrames.size > 1, `${idleFrames.size} quadros diferentes`);
+  check('Saída para o leste ainda desconhecida', (await q('.g-exits')) === 'Leste: ???');
+  check('Atacar desativado fora de batalha', await b.eval(`document.querySelector('[data-menu=attack]').disabled`));
   const saved = await b.eval(`JSON.parse(localStorage.getItem('lenda-de-ether:save'))`);
   check('Save tem o personagem certo', saved?.state?.player?.name === 'Lia da Silva' && saved.state.player.class === 'mago' && saved.state.player.outfitColor === 'ameixa' && !('gender' in saved.state.player));
-  await b.screenshot(path.join(OUT, 'jogo-provisorio.png'));
+  check('Save já tem a dungeon', saved?.state?.dungeon?.room === 'salao');
+  await b.screenshot(path.join(OUT, 'jogo-1-entrada.png'));
 
-  await b.key('Escape'); await b.wait(300);
-  check('Esc volta ao menu', await b.eval(`!!document.querySelector('.title-screen')`));
+  await b.key('ArrowUp');
+  check('Andar contra a parede avisa e não sai do lugar', (await room()) === 'Salão Abandonado' && (await logText()).includes('Não há passagem'));
+  await b.key('ArrowRight');
+  await b.key('ArrowRight');   // segunda seta durante a passagem: precisa ser ignorada
+  await b.wait(220);
+  check('Passagem de sala é animada (ainda trocando)', (await room()) === 'Salão Abandonado' && await b.eval(`document.querySelector('.game').classList.contains('g-busy')`));
+  await b.screenshot(path.join(OUT, 'jogo-passagem.png'));
+  await b.wait(STEP);
+  check('Seta → passa pela porta leste', (await room()) === 'Galeria dos Retratos');
+  check('Comandos durante a passagem são ignorados (não pulou duas salas)', (await room()) === 'Galeria dos Retratos');
+  check('Cena muda com a sala', (await b.eval(scenePixels)).h !== sc1.h);
+  check('Minimapa revela vizinhas em névoa', (await cells()) === 'capela:fog cripta:fog galeria:current salao:visited', await cells());
+  check('Galeria tem o NPC para conversar', (await q('.g-room-actions')).includes('Falar com Velho Eremita'));
+  const fire = new Set();
+  for (let i = 0; i < 6; i++){ fire.add((await b.eval(scenePixels)).h); await b.wait(130); }
+  check('Fogueira e NPC animados', fire.size > 2, `${fire.size} quadros diferentes`);
+  await b.click('[data-act=talk]');
+  check('Falar abre a caixa de diálogo com o nome do NPC', (await q('.dlg-name')) === 'Velho Eremita');
+  await b.wait(800);
+  await b.screenshot(path.join(OUT, 'jogo-2-npc.png'));
+  const talk1 = await readDialog();
+  check('Primeira conversa mostra as 4 falas em ordem', talk1.length === 4 && talk1[0].startsWith('Outro viajante') && talk1[3].includes('capela'), JSON.stringify(talk1));
+  check('Conversa deixa registro no log', (await logText()).includes('Você conversou com Velho Eremita.'));
+  await b.click('[data-act=talk]');
+  const talk2 = await readDialog();
+  check('Depois o NPC só repete a frase curta', talk2.length === 1 && talk2[0].includes('cripta'), JSON.stringify(talk2));
+  await b.click('[data-act=talk]'); await b.wait(100);
+  await b.key('Escape');
+  check('Esc fecha a conversa', await b.eval(`!document.querySelector('.dlg')`));
+  check('Botões do menu cabem sem cortar o texto', await b.eval(`[...document.querySelectorAll('.g-menu .g-btn')].every(b => b.scrollWidth <= b.clientWidth)`));
+
+  await b.click('.mm-cell[data-room=capela]'); await b.wait(STEP);
+  check('Clicar na sala vizinha no minimapa anda até ela', (await room()) === 'Capela Rachada');
+  check('Evento mostra as escolhas', (await b.eval(`document.querySelectorAll('[data-act^="choice:"]').length`)) === 2);
+  await b.click('[data-act="choice:0"]');
+  check('Escolha do evento aparece no log', (await logText()).includes('Você se sente renovado'));
+  check('Escolhas somem depois de escolher', (await b.eval(`document.querySelectorAll('[data-act^="choice:"]').length`)) === 0);
+  await b.click('.mm-cell[data-room=salao]');
+  check('Clicar numa sala longe no minimapa não teleporta', (await room()) === 'Capela Rachada' && (await logText()).includes('sala vizinha'));
+
+  await b.key('s'); await b.wait(STEP); await b.key('d'); await b.wait(STEP);
+  check('WASD também anda (S e D até a Cripta)', (await room()) === 'Cripta Inundada');
+  check('Cripta avisa do Rato Gigante', (await logText()).includes('Rato Gigante'));
+  check('Atacar fica ativo na sala de combate', !(await b.eval(`document.querySelector('[data-menu=attack]').disabled`)));
+  await b.click('[data-menu=attack]');
+  check('Atacar avisa que o combate vem depois', (await logText()).includes('próxima etapa'));
+  await b.screenshot(path.join(OUT, 'jogo-3-combate.png'));
+
+  await b.click('[data-menu=stats]'); await b.wait(350);
+  check('Estatísticas abre a ficha', (await b.eval(`!document.querySelector('.g-panel').hidden`)) && (await q('.g-panel-body')).includes('Olhar Aguçado'));
+  check('Ficha mostra o nome', (await q('.g-sheet-name')) === 'Lia da Silva');
+  await b.screenshot(path.join(OUT, 'jogo-4-estatisticas.png'));
+  await b.key('ArrowRight');
+  check('Com a janela aberta as setas não andam', (await room()) === 'Cripta Inundada');
+  await b.key('Escape');
+  check('Esc fecha a janela', await b.eval(`document.querySelector('.g-panel').hidden`));
+  await b.click('[data-menu=items]'); await b.wait(100);
+  check('Itens abre a mochila', (await q('.g-panel-title')) === 'Mochila' && (await q('.g-panel-body')).includes('Cajado de Aprendiz'));
+  await b.click('[data-close]');
+  check('Botão Fechar fecha a janela', await b.eval(`document.querySelector('.g-panel').hidden`));
+
+  const saved2 = await b.eval(`JSON.parse(localStorage.getItem('lenda-de-ether:save')).state.dungeon`);
+  check('Progresso salvo sozinho (sala, visitadas, evento)', saved2.room === 'cripta' && saved2.visited.length === 4 && saved2.done.capela === true);
+
+  await b.click('[data-menu=title]'); await b.wait(300);
+  check('Botão Menu volta ao menu', await b.eval(`!!document.querySelector('.title-screen')`));
   check('Continuar ficou ativo', !(await b.eval(`document.querySelector('[data-action=continue]').disabled`)));
   await b.goto(server.url); await b.wait(500);   // simula fechar e abrir o jogo
   await b.click('[data-action=continue]'); await b.wait(200);
-  check('Continuar carrega o personagem salvo', (await q('.hero-name')) === 'Lia da Silva');
-  await b.click('[data-action=menu]'); await b.wait(300);
-  check('Botão Menu volta ao menu (celular não tem Esc)', await b.eval(`!!document.querySelector('.title-screen')`));
+  check('Continuar volta na mesma sala', (await room()) === 'Cripta Inundada' && (await q('.hc-name')) === 'Lia da Silva');
+  check('Continuar mantém o minimapa', (await b.eval(`document.querySelectorAll('.mm-cell.visited, .mm-cell.current').length`)) === 4);
+  await b.click('[data-menu=title]'); await b.wait(300);
   await b.click('[data-action=new]');
   check('Novo Jogo com save pede confirmação', (await b.eval(`!!document.querySelector('.title-screen')`)) && (await q('.msg')).includes('Já existe'));
   await b.click('[data-action=options]');
@@ -202,6 +333,15 @@ try {
   await b.screenshot(path.join(OUT, 'criacao-celular.png'));
   await b.click('[data-action=next]'); await b.wait(100);
   await b.screenshot(path.join(OUT, 'criacao-celular-2.png'));
+  await b.eval(`localStorage.setItem('lenda-de-ether:save', ${JSON.stringify(JSON.stringify(saved))})`);
+  await b.goto(server.url); await b.wait(300);
+  await b.click('[data-action=continue]'); await b.wait(200);
+  const mob = await b.eval(`(() => { const s = document.querySelector('.g-scene').getBoundingClientRect();
+    return { scene: s.height > 100, noSide: document.documentElement.scrollWidth <= innerWidth,
+             menu: !!document.querySelector('[data-menu=stats]') }; })()`);
+  check('Tela de jogo funciona no celular (cena visível, sem rolagem lateral)', mob.scene && mob.noSide && mob.menu, JSON.stringify(mob));
+  await b.screenshot(path.join(OUT, 'jogo-celular.png'));
+  await b.eval(`localStorage.clear()`);
   await b.resize(1280, 720);
 
   // ---------- telas de outros tamanhos ----------

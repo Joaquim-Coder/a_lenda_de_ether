@@ -12,6 +12,7 @@ Não precisa instalar nada nem compilar. O Three.js e a fonte já estão dentro 
 ## Testes
 ```
 node tests/unit.mjs          # regras e dados (sem navegador, rápido)
+node tests/dungeon.test.mjs  # dungeons: portas, mapa, salas e interações
 node tests/smoke.mjs         # o jogo de verdade num navegador
 node tests/sprite-sheet.mjs  # gera tests/output/sprites.png com todos os bonecos
 ```
