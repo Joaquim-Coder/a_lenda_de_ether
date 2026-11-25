@@ -1,0 +1,39 @@
+/* Base do jogo inteiro: fonte, cores e reset. Cada tela tem seu próprio CSS. */
+
+@font-face{
+  font-family:'Press Start 2P';
+  src:url('../assets/fonts/PressStart2P.woff2') format('woff2');
+  font-display:swap;
+}
+
+:root{
+  --noite:#05040d; --violeta:#2a1a58; --ouro:#ffd75e; --ether:#7df9ff; --texto:#d8d0ff; --apagado:#9d93d8;
+  --pixel:'Press Start 2P', ui-monospace, 'Courier New', monospace;
+
+  /* Padrão das interfaces (menus, painéis): sóbrio, um único destaque dourado */
+  --ui-bg:#0c0b12;
+  --ui-panel:#15131d;
+  --ui-panel-2:#1c1a26;
+  --ui-line:#2f2b3b;
+  --ui-line-2:#4a4458;
+  --ui-text:#dcd6c8;
+  --ui-muted:#8d8798;
+  --ui-dim:#57526a;
+  --ui-accent:#c8a75e;
+  --ui-accent-dark:#7d6431;
+  --ui-danger:#c9776b;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--noite);color:var(--texto);overflow:hidden;font-family:var(--pixel)}
+#app{position:fixed;inset:0}
+
+/* Tela provisória para partes ainda não feitas */
+.placeholder{
+  height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3vh;
+  text-align:center;padding:4vw;font-size:clamp(9px,1.4vw,16px);line-height:1.8;
+  color:var(--ui-text);background:var(--ui-bg);
+}
+.placeholder h2{margin:0;font-size:1.4em;font-weight:400;color:var(--ui-accent)}
+.placeholder p{margin:0}
+.placeholder .hint{color:var(--ui-muted);font-size:.8em}

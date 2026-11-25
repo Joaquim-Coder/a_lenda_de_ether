@@ -1,0 +1,97 @@
+/* Tela inicial */
+
+.title-screen{position:absolute;inset:0;overflow:hidden;background:var(--noite)}
+
+/* Cena em pixel art: 320x180 ampliada para cobrir a tela */
+.title-screen .scene{
+  position:absolute;left:50%;top:50%;
+  width:max(100vw, calc(100dvh * 16 / 9));
+  height:max(56.25vw, 100dvh);
+  transform:translate(-50%,-50%);
+  image-rendering:pixelated;image-rendering:crisp-edges;
+  animation:acender 1.8s ease-out both;
+}
+.title-screen::after{
+  content:"";position:absolute;inset:0;pointer-events:none;z-index:1;
+  background:
+    linear-gradient(to top, rgba(3,2,10,.78) 0, rgba(3,2,10,0) 17%),
+    radial-gradient(ellipse at 50% 42%, transparent 52%, rgba(3,2,10,.62) 100%);
+}
+
+.title-screen .ui{
+  position:absolute;inset:0;z-index:2;
+  display:flex;flex-direction:column;align-items:center;justify-content:space-between;
+  padding:3.5vh 4vw 4.5vh;pointer-events:none;
+}
+
+/* Título: "A Lenda de" pequeno entre filetes, "ETHER" em pixel com contorno e relevo */
+.title-screen .title{
+  margin:0;font-weight:400;display:flex;flex-direction:column;align-items:center;gap:1.6vh;
+  filter:drop-shadow(0 0 12px rgba(125,249,255,.3));
+  animation:descer .9s steps(6) .6s both;
+}
+.title-screen .pre{
+  display:flex;align-items:center;gap:.9em;
+  font-size:clamp(7px,min(1.4vw,2.1vh),15px);
+  letter-spacing:.4em;color:var(--texto);
+  text-shadow:0 .2em 0 #0b0620,0 0 .4em #0b0620;
+}
+.title-screen .pre::before,.title-screen .pre::after{
+  content:"";width:4.5em;height:.25em;
+  background:linear-gradient(90deg,transparent,var(--ouro) 70%,#fff6c2);
+  box-shadow:0 .2em 0 #0b0620;
+}
+.title-screen .pre::after{transform:scaleX(-1);margin-left:-.4em}
+.title-screen .ether{
+  position:relative;display:block;isolation:isolate;
+  font-size:min(11vw,14vh);line-height:1;letter-spacing:.06em;color:transparent;
+  padding:0 .08em .2em;
+}
+.title-screen .ether::before,.title-screen .ether::after{content:attr(data-t);position:absolute;inset:0 .08em .2em;letter-spacing:inherit}
+/* contorno em degraus de pixel (sem cantos arredondados) + relevo violeta embaixo */
+.title-screen .ether::before{
+  z-index:0;color:#120a2c;
+  text-shadow:
+    -.06em 0 0 #120a2c, .06em 0 0 #120a2c, 0 -.06em 0 #120a2c, 0 .06em 0 #120a2c,
+    -.06em -.06em 0 #120a2c, .06em -.06em 0 #120a2c, -.06em .06em 0 #120a2c, .06em .06em 0 #120a2c,
+    0 .12em 0 #3b2169, .06em .12em 0 #3b2169, -.06em .12em 0 #3b2169,
+    0 .18em 0 #241446, .06em .18em 0 #241446, -.06em .18em 0 #241446,
+    0 .24em 0 #0a0518, .06em .24em 0 #0a0518, -.06em .24em 0 #0a0518;
+}
+.title-screen .ether::after{
+  z-index:1;color:transparent;-webkit-text-fill-color:transparent;
+  background:
+    linear-gradient(105deg,transparent 42%,rgba(255,255,255,.95) 50%,transparent 58%) 0 0/250% 100% no-repeat,
+    linear-gradient(#ffffff 0 9%,#fff6c2 9% 24%,#ffd75e 24% 46%,#f2a93b 46% 54%,#e08a2e 54% 72%,#b9692a 72% 86%,#8a4520 86%) 0 0/100% 100% no-repeat;
+  -webkit-background-clip:text;background-clip:text;
+  animation:brilho 6s steps(24) 2.6s infinite;
+}
+
+/* Menu */
+.title-screen .bottom{display:flex;flex-direction:column;align-items:center;gap:2vh;animation:surgir .8s steps(5) 1.9s both}
+.title-screen .msg{margin:0;min-height:1.6em;font-size:clamp(7px,1.15vw,12px);color:var(--ether);text-align:center;line-height:1.6;text-shadow:0 .15em 0 #05030f}
+.title-screen .menu{display:flex;flex-wrap:wrap;justify-content:center;gap:1.2vh 3.2vw;pointer-events:auto}
+.title-screen .menu button{
+  position:relative;background:none;border:0;cursor:pointer;
+  font:inherit;font-size:clamp(9px,min(1.7vw,2.6vh),18px);
+  color:var(--apagado);padding:.8em .6em .8em 1.5em;text-shadow:0 .16em 0 #05030f;
+}
+.title-screen .menu button:disabled{opacity:.4;cursor:not-allowed}
+.title-screen .menu button.on{color:var(--ouro)}
+.title-screen .menu button.on::before{
+  content:"";position:absolute;left:.2em;top:50%;transform:translateY(-50%);
+  border-left:.6em solid var(--ouro);border-top:.4em solid transparent;border-bottom:.4em solid transparent;
+  animation:piscar 1s steps(2) infinite;
+}
+.title-screen .menu button:focus-visible{outline:2px dotted var(--ether);outline-offset:3px}
+
+@keyframes acender{from{opacity:0}to{opacity:1}}
+@keyframes descer{from{opacity:0;transform:translateY(-2vh)}to{opacity:1;transform:none}}
+@keyframes surgir{from{opacity:0}to{opacity:1}}
+@keyframes brilho{0%,55%{background-position:160% 0,0 0}100%{background-position:-60% 0,0 0}}
+@keyframes piscar{0%{opacity:1}50%{opacity:.15}}
+
+@media (prefers-reduced-motion:reduce){
+  .title-screen .scene,.title-screen .title,.title-screen .bottom,
+  .title-screen .ether::after,.title-screen .menu button.on::before{animation:none}
+}

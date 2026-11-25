@@ -1,0 +1,437 @@
+// Cena da tela inicial: reino em ruínas à noite, desenhado em pixel art (320x180).
+// createTitleScene(canvas) devolve { start, stop } — a tela chama stop() ao sair.
+
+export function createTitleScene(cv){
+  const W = 320, H = 180, PAD = 8;
+
+  const ctx = cv.getContext('2d');
+  cv.width = W; cv.height = H;
+  ctx.imageSmoothingEnabled = false;
+
+  // ---------- utilidades ----------
+  function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+  const rnd = mulberry(20261124);
+  function makeLayer(){
+    const c = document.createElement('canvas'); c.width = W + PAD*2; c.height = H;
+    const x = c.getContext('2d'); x.translate(PAD, 0); return {c, x};
+  }
+  const px = (x,c,a,b,w=1,h=1) => { x.fillStyle = c; x.fillRect(a,b,w,h); };
+  function disc(x,c,cx,cy,r){
+    x.fillStyle = c;
+    for (let y=-r; y<=r; y++){ const hw = Math.floor(Math.sqrt(r*r - y*y + 0.5)); x.fillRect(cx-hw, cy+y, hw*2+1, 1); }
+  }
+  function line(x,c,x0,y0,x1,y1,t=1){
+    x.fillStyle = c;
+    const n = Math.max(Math.abs(x1-x0), Math.abs(y1-y0)) || 1;
+    for (let i=0; i<=n; i++) x.fillRect(Math.round(x0+(x1-x0)*i/n), Math.round(y0+(y1-y0)*i/n), t, t);
+  }
+
+  // ---------- céu ----------
+  const sky = makeLayer();
+  const bands = ['#080716','#0d0b24','#141036','#1d1448','#2a1a58','#3b2169','#52287a','#6e3382','#8a3d86'];
+  const BH = 17;
+  bands.forEach((c,i) => px(sky.x, c, -PAD, i*BH, W+PAD*2, BH+1));
+  for (let i=1; i<bands.length; i++){
+    const yb = i*BH;
+    for (let x=-PAD; x<W+PAD; x++){
+      if ((x & 1) === 0) px(sky.x, bands[i], x, yb-1);
+      if ((x & 3) === 0) px(sky.x, bands[i], x, yb-2);
+    }
+  }
+
+  // ---------- lua ----------
+  const moon = makeLayer();
+  const MX = 284, MY = 40;
+  disc(moon.x,'rgba(190,175,255,0.06)',MX,MY,30);
+  disc(moon.x,'rgba(190,175,255,0.09)',MX,MY,24);
+  disc(moon.x,'rgba(190,175,255,0.13)',MX,MY,19);
+  disc(moon.x,'#ebe7ff',MX,MY,14);
+  px(moon.x,'#c7c0f2',MX-6,MY-5,3,2); px(moon.x,'#c7c0f2',MX+3,MY+2,4,3);
+  px(moon.x,'#c7c0f2',MX-3,MY+6,2,2); px(moon.x,'#c7c0f2',MX+5,MY-7,2,1);
+  px(moon.x,'#d9d3f7',MX-9,MY+1,2,2);
+
+  // ---------- montanhas ----------
+  const m1 = makeLayer(), m2 = makeLayer();
+  function ridge(L,base,amp,f1,f2,ph,col,rim){
+    for (let x=-PAD; x<W+PAD; x++){
+      const y = Math.round(base - (Math.sin(x*f1+ph)*amp + Math.sin(x*f2+ph*2)*amp*0.5 + (rnd()-0.5)*1.5));
+      px(L.x, col, x, y, 1, H-y); px(L.x, rim, x, y, 1, 1);
+    }
+  }
+  ridge(m1,112,9,0.021,0.067,1.3,'#2b2260','#443a8c');
+  ridge(m2,124,7,0.03,0.09,4.1,'#1c1647','#2d2570');
+
+  // ---------- castelo em ruínas ----------
+  const cs = makeLayer(), C = cs.x;
+  const WALL='#151030', TOPC='#241c4e', LIT='#2e2560', SHADE='#0c0920', BRICK='#1b1540',
+        DARK='#07050f', GLOW='#3fb6d4', GLOW2='#7df9ff', MOSS='#17322f', MOSS2='#24504a';
+  const BASE = 146;
+  // colina em platô: o castelo fica apoiado em cima
+  const hillY = x => Math.round(146 - 8*Math.exp(-Math.pow((x-160)/70,4)) + Math.sin(x*0.07)*1.5);
+
+  // parede genérica: topo por coluna, tijolos, lado da lua (direita) iluminado
+  function wall(x0,x1,topAt){
+    const tops = [];
+    for (let x=x0; x<=x1; x++) tops.push(topAt(x));
+    for (let x=x0; x<x1; x++){
+      const t = tops[x-x0], next = tops[x-x0+1];
+      for (let y=t; y<BASE; y++){
+        let c = WALL;
+        if (y === t) c = TOPC;
+        else if (x === x1-1 || y < next) c = LIT;
+        else if (x === x0) c = SHADE;
+        else if (y % 4 === 0 && ((x + ((y>>2)&1)*3) % 6) < 4) c = BRICK;
+        px(C,c,x,y);
+      }
+    }
+  }
+  const cren = (x0,top) => x => ((x-x0)%5) < 3 ? top-3 : top;
+  const jag  = (x0,arr) => x => arr[Math.min(arr.length-1, x-x0)];
+  function cone(xc,base,apex,hw0){
+    for (let y=apex; y<=base; y++){
+      const hw = Math.round((y-apex)/(base-apex)*hw0);
+      for (let dx=-hw; dx<=hw; dx++){
+        let c = dx < 0 ? '#120c2a' : '#241a52';
+        if ((y-apex)%3 === 2) c = dx < 0 ? '#0c0820' : '#1b1440';
+        if (dx === hw && hw > 0) c = '#3a2d78';
+        px(C,c,xc+dx,y);
+      }
+    }
+  }
+  function archWin(x,y,lit){
+    px(C,DARK,x,y+1,3,5); px(C,DARK,x+1,y,1,1);
+    if (lit){ px(C,GLOW,x+1,y+2,1,3); px(C,GLOW2,x+1,y+3,1,1); }
+  }
+
+  // de trás para frente
+  wall(106,138,cren(106,118));                                       // muralha esquerda
+  wall(196,224,x => x < 206 ? cren(196,118)(x)
+                            : Math.round(119 + (x-206)*0.75 + Math.sin(x*1.7)*1.5)); // muralha direita desabando
+  wall(224,234,jag(224,[122,121,123,125,124,127,126,129,128,131,131])); // toco de torre
+  wall(92,106,() => 96);                                             // torre esquerda
+  wall(182,196,jag(182,[84,84,85,87,90,94,92,89,93,98,96,94,97,101,101])); // torre alta partida
+  wall(138,182,cren(138,98));                                        // torre de menagem
+
+  // telhado cônico da torre esquerda, com um rombo
+  cone(99,96,76,9);
+  C.clearRect(94,88,3,4); C.clearRect(95,87,1,1);
+  px(C,'#0c0820',93,90,5,1);
+  // estandarte rasgado
+  px(C,'#3a2d78',99,66,1,10);
+  [7,8,8,6,7,4].forEach((len,i) => px(C, i ? '#5a1f3a' : '#7a2a4a', 100, 67+i, len, 1));
+  C.clearRect(104,69,1,1); C.clearRect(102,71,1,1); C.clearRect(105,71,2,1);
+  // janelas
+  px(C,DARK,98,104,2,6); px(C,GLOW,98,106,1,3);
+  px(C,DARK,116,124,1,5); px(C,DARK,128,124,1,5);
+  archWin(143,112,false); archWin(174,112,true);
+  archWin(187,100,true);  archWin(187,118,false);
+  // buraco atravessando a torre partida (mostra o céu)
+  C.clearRect(187,109,3,4); C.clearRect(186,110,1,2);
+  line(C,'#0c0920',190,95,198,89);   // viga solta
+  // rachadura na menagem
+  line(C,SHADE,176,99,172,106); line(C,SHADE,172,106,174,114);
+  // rosácea com luz de Ether
+  disc(C,DARK,160,108,4); disc(C,'#2a7f9f',160,108,2);
+  px(C,GLOW2,160,106,1,5); px(C,GLOW2,158,108,5,1); px(C,'#ffffff',160,108);
+  // portão em arco com luz de Ether
+  px(C,DARK,152,128,16,18); px(C,DARK,153,126,14,2); px(C,DARK,155,124,10,2); px(C,DARK,157,123,6,1);
+  px(C,'#1d5f7a',154,130,12,16); px(C,'#2a7f9f',156,132,8,14); px(C,GLOW2,158,135,4,11); px(C,'#c9fbff',159,138,2,8);
+  px(C,TOPC,156,122,8,1); px(C,TOPC,154,123,2,1); px(C,TOPC,164,123,2,1);
+  px(C,TOPC,152,125,2,1); px(C,TOPC,166,125,2,1); px(C,TOPC,151,127,1,1); px(C,TOPC,168,127,1,1);
+  [[154,6],[157,4],[160,7],[163,3],[166,5]].forEach(([bx,l]) => px(C,'#0b0818',bx,125,1,l)); // grade quebrada
+  // trepadeiras e musgo
+  [[108,118,5],[114,118,3],[134,118,6],[141,98,4],[150,98,7],[178,98,5],[200,118,4],[93,96,6],[184,86,8],[229,124,4]]
+    .forEach(([x,y,len]) => { for (let k=0; k<len; k++) px(C, k%3 ? MOSS : MOSS2, x + (k>3 && k%4===0 ? 1 : 0), y+k); });
+  for (let x=92; x<234; x++) if (rnd() < 0.45) px(C, rnd()<0.5 ? MOSS : MOSS2, x, hillY(x)-1-Math.floor(rnd()*3), 1+Math.floor(rnd()*2), 1);
+
+  // colina
+  for (let x=-PAD; x<W+PAD; x++){
+    const y = hillY(x);
+    px(C,'#0e0a22',x,y,1,H-y); px(C,'#1a1440',x,y,1,1);
+  }
+  // entulho da muralha caída
+  px(C,WALL,212,hillY(212)-4,4,4); px(C,TOPC,212,hillY(212)-4,4,1);
+  px(C,WALL,219,hillY(219)-3,3,3); px(C,TOPC,219,hillY(219)-3,3,1);
+  for (let i=0; i<40; i++){
+    const x = 84 + Math.floor(rnd()*152);
+    px(C, rnd()<0.6 ? '#1f1844' : TOPC, x, hillY(x)-Math.floor(rnd()*3), 1+Math.floor(rnd()*2), 1);
+  }
+
+  // ---------- primeiro plano ----------
+  const fg = makeLayer();
+  // chão com um morrinho no meio, onde o herói fica
+  const groundY = x => Math.round(156 + Math.sin(x*0.05)*2 + Math.sin(x*0.17) - 5*Math.exp(-Math.pow((x-157)/22,2)));
+  for (let x=-PAD; x<W+PAD; x++){
+    const y = groundY(x);
+    px(fg.x,'#06040e',x,y,1,H-y);
+    if (rnd() < 0.18) px(fg.x,'#06040e',x,y-1-Math.floor(rnd()*3),1,3);
+  }
+  function tree(x0,base,h,lean,w){
+    fg.x.fillStyle = '#06040e';
+    for (let i=0; i<h; i++){
+      const t = Math.max(2, Math.round(w*(1-i/h)));
+      fg.x.fillRect(x0 + Math.round(lean*i/h) - (t>>1), base-i, t, 1);
+    }
+    const at = f => [x0 + Math.round(lean*f), base - Math.round(h*f)];
+    [[0.5,-1,16,-10],[0.62,1,18,-12],[0.78,-1,12,-9],[0.85,1,14,-8],[1,0,6,-10]].forEach(([f,d,dx,dy]) => {
+      const [sx,sy] = at(f);
+      line(fg.x,'#06040e',sx,sy,sx+d*dx,sy+dy,2);
+      line(fg.x,'#06040e',sx+d*dx,sy+dy,sx+d*dx+d*5,sy+dy-5,1);
+    });
+  }
+  tree(26,162,78,-4,6);
+  tree(296,162,60,3,5);
+  disc(fg.x,'#06040e',62,158,4); disc(fg.x,'#06040e',252,159,5);
+  disc(fg.x,'#06040e',143,155,3); disc(fg.x,'#06040e',172,156,2);
+
+  // ---------- herói de costas, espada erguida para o cristal ----------
+  const HERO_A = [
+    "........S", ".......sS", ".......sS", ".......sS", ".......sS", ".......sS",
+    ".......sS", ".......sS", ".......sS", ".......sS", ".......sS", "......gggg",
+    ".......GG", ".......kk", ".......kk", ".......kk", "...hhh.kk", "..hhhhhk",
+    "..hhhhhk", "..hhhhhk", "...hhh.k", ".kkkkkkk", "kccccccck", "kcccccccc",
+    "kcccccccc", "kcccccccc", ".ccccccccc", ".cccccccccc", "..kk..kk", "..kk..kk", ".kkk..kkk"
+  ];
+  const HERO_B = HERO_A.slice();
+  HERO_B[25] = "kccccccccc"; HERO_B[26] = ".cccccccccc"; HERO_B[27] = "..ccccccc.cc";
+  // corpo um pouco mais claro que o chão (#06040e) para a silhueta não sumir
+  const HCOL = {k:'#1e1640', c:'#2c1f5c', h:'#241a4a', s:'#c9fbff', S:'#7df9ff', g:'#ffd75e', G:'#5a3a22'};
+  function buildSprite(map){
+    const w = Math.max(...map.map(r => r.length)), h = map.length;
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const x = c.getContext('2d');
+    const at = (i,j) => (map[j] || '')[i] || '.';
+    for (let j=0; j<h; j++) for (let i=0; i<w; i++){
+      const ch = at(i,j); if (ch === '.') continue;
+      let col = HCOL[ch];
+      if ('kch'.includes(ch)){
+        if (at(i,j-1) === '.') col = '#4fc9e0';          // luz do cristal vinda de cima
+        else if (at(i+1,j) === '.') col = '#7a64d8';     // luz da lua pela direita
+        else if (at(i-1,j) === '.') col = '#2f7f9c';     // reflexo fraco do cristal pela esquerda
+      }
+      px(x,col,i,j);
+    }
+    return c;
+  }
+  const heroA = buildSprite(HERO_A), heroB = buildSprite(HERO_B);
+  const HX = 152, HY = groundY(156) - HERO_A.length + 1;
+
+  // ---------- elementos animados ----------
+  const stars = Array.from({length:110}, () => ({
+    x:Math.floor(rnd()*W), y:Math.floor(rnd()*104), ph:rnd()*6.28,
+    c:['#ffffff','#b9b2ff','#7df9ff'][Math.floor(rnd()*3)], big:rnd()<0.08
+  }));
+  const clouds = Array.from({length:7}, () => ({x:rnd()*W, y:26+rnd()*70, w:36+rnd()*50, s:1.5+rnd()*2.5}));
+  const mist = Array.from({length:16}, () => ({
+    x:rnd()*(W+100), y:128+Math.floor(rnd()*30), w:30+rnd()*60, h:2+Math.floor(rnd()*3),
+    s:(rnd()<0.5?-1:1)*(1.5+rnd()*3), a:0.07+rnd()*0.09
+  }));
+  const motes = Array.from({length:46}, () => ({
+    x:80+rnd()*160, y:60+rnd()*100, v:4+rnd()*10, ph:rnd()*6.28,
+    c:['#7df9ff','#b58cff','#ffffff','#ffd36b'][Math.floor(rnd()*4)], big:rnd()<0.15
+  }));
+  const glowStyle = [null,'rgba(110,200,255,0.07)','rgba(110,200,255,0.14)','rgba(110,200,255,0.21)'];
+
+  function drawMist(front, t){
+    mist.forEach(m => {
+      if ((m.y > 146) !== front) return;
+      const span = W + 120;
+      const x = (((m.x + t*m.s) % span) + span) % span - 60;
+      ctx.fillStyle = `rgba(165,150,235,${m.a})`;
+      ctx.fillRect(Math.round(x), m.y, Math.round(m.w), m.h);
+    });
+  }
+  function drawGlow(cx,cy,R){
+    for (let y=-R; y<=R; y+=2) for (let x=-R; x<=R; x+=2){
+      const d = Math.hypot(x,y); if (d >= R) continue;
+      const l = Math.floor((1 - d/R)*4); if (!l) continue;
+      ctx.fillStyle = glowStyle[l]; ctx.fillRect(cx+x, cy+y, 2, 2);
+    }
+  }
+  // cristal lapidado: coroa curta em cima, pavilhão longo embaixo, núcleo pulsando
+  const CR_TOP = -13, CR_MID = -3, CR_BOT = 17, CR_HW = 7;
+  const CROWN = ['#2a86b8','#5fe0f0','#e6feff','#b9a2ff','#6a4fd0'];
+  const PAV   = ['#1d5f96','#3ab8d8','#a6f4ff','#8f6cf0','#47309e'];
+  const crHw = dy => dy <= CR_MID
+    ? Math.round((dy-CR_TOP)/(CR_MID-CR_TOP)*CR_HW)
+    : Math.round((CR_BOT-dy)/(CR_BOT-CR_MID)*CR_HW);
+  const GLINT = new Set(['-1,-11','-2,-10','-3,-8','-4,-7','-5,-5']);
+  function drawShard(x,y,front){
+    ctx.globalAlpha = front ? 1 : 0.5;
+    ctx.fillStyle = '#0b0620'; ctx.fillRect(x-2,y-1,5,3); ctx.fillRect(x-1,y-3,3,7);
+    ctx.fillStyle = '#3ab8d8'; ctx.fillRect(x-1,y-1,1,3);
+    ctx.fillStyle = '#8f6cf0'; ctx.fillRect(x+1,y-1,1,3);
+    ctx.fillStyle = front ? '#e6feff' : '#9ff4ff'; ctx.fillRect(x,y-2,1,5);
+    ctx.globalAlpha = 1;
+  }
+  function drawCrystal(cx,cy,t){
+    const shards = [0,1,2].map(k => {
+      const a = t*1.1 + k*2.094;
+      return {x:Math.round(cx + Math.cos(a)*15), y:Math.round(cy + Math.sin(a)*4 + Math.sin(t*2+k)), front:Math.sin(a) > 0};
+    });
+    shards.filter(s => !s.front).forEach(s => drawShard(s.x,s.y,false));
+
+    // contorno escuro
+    ctx.fillStyle = '#0b0620';
+    for (let dy=CR_TOP-1; dy<=CR_BOT+1; dy++){
+      const hw = crHw(Math.min(Math.max(dy,CR_TOP),CR_BOT)) + 1;
+      ctx.fillRect(cx-hw, cy+dy, hw*2+1, 1);
+    }
+    // facetas
+    const pulse = (Math.sin(t*2.2) + 1) / 2;
+    const coreY = CR_MID + 6, coreR = 1.6 + pulse*1.4;
+    const ring = Math.sin(t*1.5) > 0 ? '#7df9ff' : '#e0c8ff';
+    for (let dy=CR_TOP; dy<=CR_BOT; dy++){
+      const hw = crHw(dy);
+      for (let dx=-hw; dx<=hw; dx++){
+        const u = hw ? dx/hw : 0;
+        const i = u < -0.6 ? 0 : u < -0.15 ? 1 : u <= 0.15 ? 2 : u <= 0.6 ? 3 : 4;
+        let c = (dy < CR_MID ? CROWN : PAV)[i];
+        if (dy === CR_MID) c = Math.abs(dx) < hw ? '#ffffff' : '#c9fbff';
+        const d = Math.abs(dx) + Math.abs(dy-coreY)*0.5;
+        if (d <= coreR) c = d <= coreR-1.2 ? '#ffffff' : ring;
+        if (GLINT.has(dx+','+dy)) c = '#ffffff';
+        ctx.fillStyle = c; ctx.fillRect(cx+dx, cy+dy, 1, 1);
+      }
+    }
+    shards.filter(s => s.front).forEach(s => drawShard(s.x,s.y,true));
+
+    // anel de runas girando embaixo
+    for (let i=0; i<14; i++){
+      const a = t*0.8 + i*Math.PI*2/14;
+      const front = Math.sin(a) > 0;
+      ctx.globalAlpha = front ? 0.9 : 0.35;
+      ctx.fillStyle = i % 2 ? '#7df9ff' : '#b58cff';
+      const s = i % 7 === 0 ? 2 : 1;
+      ctx.fillRect(Math.round(cx + Math.cos(a)*13), Math.round(cy + CR_BOT + 4 + Math.sin(a)*3), s, s);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // estrela cadente
+  let shoot = null, nextShoot = 2.5;
+  function drawShootingStar(t){
+    if (!shoot && t > nextShoot){
+      shoot = {t0:t, x:130 + Math.random()*180, y:4 + Math.random()*36, life:0.7 + Math.random()*0.4};
+    }
+    if (!shoot) return;
+    const el = t - shoot.t0;
+    if (el > shoot.life){ shoot = null; nextShoot = t + 3 + Math.random()*4; return; }
+    const env = Math.min(1, el/0.08, (shoot.life - el)/0.25);
+    const dx = -0.88, dy = 0.47, LEN = 20;
+    const hx = shoot.x + dx*170*el + mx, hy = shoot.y + dy*170*el;
+    for (let i=LEN; i>=0; i--){
+      ctx.globalAlpha = env * (1 - i/LEN);
+      ctx.fillStyle = i < 3 ? '#ffffff' : i < 9 ? '#b9b2ff' : '#7df9ff';
+      ctx.fillRect(Math.round(hx - dx*i), Math.round(hy - dy*i), 1, 1);
+    }
+    ctx.globalAlpha = env;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(Math.round(hx)-1, Math.round(hy), 2, 1); ctx.fillRect(Math.round(hx), Math.round(hy)-1, 1, 2);
+    ctx.globalAlpha = 1;
+  }
+
+  function drawHero(t){
+    const x = HX + Math.round(mx*7);
+    // poça de luz do cristal no chão, aos pés do herói
+    const feet = HY + HERO_A.length;
+    ctx.fillStyle = 'rgba(125,249,255,0.10)'; ctx.fillRect(x-6, feet-2, 22, 3);
+    ctx.fillStyle = 'rgba(125,249,255,0.14)'; ctx.fillRect(x-2, feet-1, 14, 2);
+    ctx.fillStyle = 'rgba(160,140,255,0.06)'; ctx.fillRect(x-3, HY+16, 16, feet-HY-16);
+    // brilho na lâmina
+    ctx.fillStyle = 'rgba(125,249,255,0.10)'; ctx.fillRect(x+5, HY-3, 6, 16);
+    ctx.fillStyle = 'rgba(125,249,255,0.08)'; ctx.fillRect(x+6, HY-6, 4, 3);
+    ctx.drawImage(Math.floor(t*2.5) % 2 ? heroB : heroA, x, HY);
+    // reflexo subindo pela lâmina
+    const k = (t % 2.6) / 0.45;
+    if (k < 1){
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(x+7, HY + 10 - Math.round(k*10), 2, 1);
+    }
+    // faísca na ponta quando o cristal pisca
+    if (Math.sin(t*1.7) > 0.92){
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(x+8, HY-3, 1, 3); ctx.fillRect(x+7, HY-2, 3, 1);
+    }
+  }
+
+  let mx = 0, tx = 0;
+  function frame(t){
+    mx += (tx - mx) * 0.06;
+    const o = k => Math.round(mx*k) - PAD;
+    const cx = 160 + Math.round(mx*4);
+    const cy = 68 + Math.round(Math.sin(t*1.3)*2);
+
+    ctx.clearRect(0,0,W,H);
+    ctx.drawImage(sky.c, o(1), 0);
+
+    stars.forEach(s => {
+      const on = Math.sin(t*1.4 + s.ph);
+      ctx.globalAlpha = on > 0.6 ? 1 : on > -0.2 ? 0.6 : 0.3;
+      ctx.fillStyle = s.c;
+      const sx = s.x + Math.round(mx), sy = s.y;
+      ctx.fillRect(sx, sy, 1, 1);
+      if (s.big){ ctx.fillRect(sx-1, sy, 3, 1); ctx.fillRect(sx, sy-1, 1, 3); }
+    });
+    ctx.globalAlpha = 1;
+
+    drawShootingStar(t);
+    ctx.drawImage(moon.c, o(1), 0);
+
+    clouds.forEach(c => {
+      const span = W + 120;
+      const x = Math.round(((c.x + t*c.s) % span) - 60 + mx);
+      ctx.fillStyle = 'rgba(110,90,190,0.28)';
+      ctx.fillRect(x, Math.round(c.y), Math.round(c.w), 3);
+      ctx.fillRect(x + Math.round(c.w*0.2), Math.round(c.y) - 2, Math.round(c.w*0.5), 2);
+      ctx.fillStyle = 'rgba(110,90,190,0.16)';
+      ctx.fillRect(x + Math.round(c.w*0.1), Math.round(c.y) + 3, Math.round(c.w*0.7), 1);
+    });
+
+    ctx.drawImage(m1.c, o(2), 0);
+    ctx.drawImage(m2.c, o(3), 0);
+
+    drawGlow(cx, cy, 44 + Math.round(Math.sin(t*2)*3));
+    ctx.fillStyle = 'rgba(125,249,255,0.08)'; ctx.fillRect(cx-2, cy+20, 5, 90);
+    ctx.fillStyle = 'rgba(125,249,255,0.12)'; ctx.fillRect(cx, cy+20, 1, 90);
+
+    ctx.drawImage(cs.c, o(4), 0);
+    drawCrystal(cx, cy, t);
+    if (Math.sin(t*1.7) > 0.92){
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(cx+6, cy-13, 1, 5); ctx.fillRect(cx+4, cy-11, 5, 1);
+    }
+
+    drawMist(false, t);
+
+    motes.forEach(m => {
+      const yy = 160 - ((160 - m.y + t*m.v) % 110);
+      const x = m.x + Math.sin(t*0.7 + m.ph)*6 + mx*4;
+      ctx.globalAlpha = Math.sin(t*3 + m.ph) > 0 ? 1 : 0.45;
+      ctx.fillStyle = m.c;
+      const s = m.big ? 2 : 1;
+      ctx.fillRect(Math.round(x), Math.round(yy), s, s);
+    });
+    ctx.globalAlpha = 1;
+
+    ctx.drawImage(fg.c, o(7), 0);
+    drawHero(t);
+    drawMist(true, t);
+  }
+
+  let raf = 0;
+  const onPointer = e => { tx = (e.clientX / window.innerWidth - 0.5) * 2; };
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function start(){
+    if (reduce){ frame(0); return; }
+    window.addEventListener('pointermove', onPointer);
+    const loop = ms => { frame(ms/1000); raf = requestAnimationFrame(loop); };
+    raf = requestAnimationFrame(loop);
+  }
+  function stop(){
+    cancelAnimationFrame(raf);
+    window.removeEventListener('pointermove', onPointer);
+  }
+  return { start, stop };
+}

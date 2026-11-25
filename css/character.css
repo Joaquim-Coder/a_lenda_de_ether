@@ -1,0 +1,107 @@
+/* Criação de personagem (e cartão provisório da tela de jogo).
+   Usa só as cores --ui-* de base.css: texto, texto apagado, linhas e um destaque dourado. */
+
+.creation{
+  position:absolute;inset:0;display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:2.5vh;
+  padding:3vh 4vw;line-height:1.7;font-size:clamp(8px,min(1.05vw,1.9vh),13px);color:var(--ui-text);
+  background:radial-gradient(ellipse at 30% 58%, #1a1724 0, var(--ui-bg) 65%);
+}
+
+/* topo: título e passos */
+.cr-head{display:flex;flex-direction:column;align-items:center;gap:1.4vh}
+.cr-title{margin:0;font-weight:400;font-size:1.6em;color:var(--ui-accent);text-shadow:0 .15em 0 #000}
+.cr-steps{display:flex;gap:2.4em;margin:0;padding:0;list-style:none;color:var(--ui-dim)}
+.cr-steps li{display:flex;align-items:center;gap:.6em}
+.cr-steps li::before{
+  content:attr(data-n);display:grid;place-items:center;width:2em;height:2em;
+  box-shadow:inset 0 0 0 2px currentColor;
+}
+.cr-steps li.done{color:var(--ui-muted)}
+.cr-steps li.now{color:var(--ui-accent)}
+
+/* meio: boneco e painel */
+.cr-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.35fr);gap:4vw;align-items:center;min-height:0}
+.cr-preview{display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative}
+.cr-sprite{image-rendering:pixelated;image-rendering:crisp-edges;position:relative;z-index:1;animation:respirar 1.2s steps(2) infinite}
+.cr-pedestal{
+  width:70%;max-width:260px;height:1.6em;margin-top:-1.1em;border-radius:50%;
+  background:radial-gradient(ellipse, rgba(0,0,0,.55) 0, rgba(0,0,0,.25) 55%, transparent 72%);
+}
+.cr-preview-label{margin-top:1.2em;color:var(--ui-muted);text-align:center}
+
+.cr-panel{
+  max-height:100%;overflow:auto;padding:1.8em;
+  scrollbar-width:thin;scrollbar-color:var(--ui-line-2) transparent;
+  background:var(--ui-panel);
+  box-shadow:0 0 0 2px var(--ui-line), 0 0 0 4px #000, 0 .6em 0 4px rgba(0,0,0,.35);
+}
+.cr-panel h3{margin:1.4em 0 .6em;font-weight:400;font-size:1.05em;color:var(--ui-accent)}
+.cr-panel h3:first-child{margin-top:0}
+.cr-panel p{margin:.4em 0}
+.cr-label{color:var(--ui-muted);margin:1.4em 0 .7em}
+.cr-label:first-child{margin-top:0}
+
+/* botões de escolha e de ação */
+.cr-choices{display:flex;flex-wrap:wrap;gap:.7em}
+.cr-choice,.cr-btn{
+  font:inherit;cursor:pointer;border:0;padding:.9em 1.1em;
+  color:var(--ui-muted);background:var(--ui-panel-2);box-shadow:inset 0 0 0 2px var(--ui-line);
+}
+.cr-choice:hover,.cr-btn:hover{color:var(--ui-text);box-shadow:inset 0 0 0 2px var(--ui-line-2)}
+.cr-choice[aria-checked="true"]{color:var(--ui-accent);box-shadow:inset 0 0 0 2px var(--ui-accent)}
+.cr-choice:focus-visible,.cr-btn:focus-visible,.cr-input:focus-visible{outline:2px dotted var(--ui-text);outline-offset:3px}
+.cr-btn.primary{color:#15120a;background:var(--ui-accent);box-shadow:inset 0 -.25em 0 var(--ui-accent-dark)}
+.cr-btn.primary:hover{color:#15120a;background:#d8b96f;box-shadow:inset 0 -.25em 0 var(--ui-accent-dark)}
+
+/* paleta de cor da roupa: quadradinhos com a cor, a sombra embaixo e o brilho em cima */
+.cr-swatches{display:flex;flex-wrap:wrap;gap:.7em}
+.cr-swatch{
+  width:2.8em;height:2.8em;padding:0;border:0;cursor:pointer;background:var(--c);
+  box-shadow:inset 0 -.6em 0 var(--C), inset 0 .3em 0 var(--L), 0 0 0 2px #000, 0 0 0 4px var(--ui-line);
+}
+.cr-swatch:hover{box-shadow:inset 0 -.6em 0 var(--C), inset 0 .3em 0 var(--L), 0 0 0 2px #000, 0 0 0 4px var(--ui-line-2)}
+.cr-swatch[aria-checked="true"]{box-shadow:inset 0 -.6em 0 var(--C), inset 0 .3em 0 var(--L), 0 0 0 2px #000, 0 0 0 4px var(--ui-accent)}
+.cr-swatch:focus-visible{outline:2px dotted var(--ui-text);outline-offset:6px}
+.cr-color-name{color:var(--ui-text)}
+
+/* caixa de texto (passiva, recurso, arma) — o mesmo formato para todas */
+.cr-box{margin:.6em 0;padding:.9em 1em;background:var(--ui-panel-2);box-shadow:inset 0 0 0 2px var(--ui-line)}
+.cr-box b{font-weight:400;color:var(--ui-accent)}
+.cr-box small{display:block;font-size:.85em;color:var(--ui-muted);margin-top:.3em}
+
+/* lista de atributos — usada para bônus da raça e para atributos finais */
+.cr-stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(17em,1fr));gap:.5em 2em;margin-top:.6em}
+.cr-stat{display:flex;justify-content:space-between;gap:.6em;white-space:nowrap;padding-bottom:.35em;border-bottom:2px solid var(--ui-line)}
+.cr-stat span{color:var(--ui-muted)}
+.cr-stat b{font-weight:400}
+.cr-stat em{font-style:normal;color:var(--ui-accent);font-size:.85em}
+
+/* nome */
+.cr-name-row{display:flex;gap:.7em}
+.cr-input{
+  flex:1;min-width:0;font:inherit;font-size:1.15em;padding:.8em 1em;border:0;
+  color:var(--ui-text);background:var(--ui-bg);box-shadow:inset 0 0 0 2px var(--ui-line-2);
+}
+.cr-input:focus{box-shadow:inset 0 0 0 2px var(--ui-accent);outline:none}
+.cr-roll{font-family:'Segoe UI Emoji','Apple Color Emoji','Noto Color Emoji',sans-serif;font-size:1.5em;line-height:1;padding:.3em .55em}
+.cr-error{min-height:1.7em;margin:.6em 0 0;color:var(--ui-danger)}
+
+/* rodapé */
+.cr-foot{display:flex;align-items:center;justify-content:space-between;gap:2em}
+.cr-hint{color:var(--ui-dim);text-align:center;flex:1}
+
+/* cartão provisório (tela de jogo) */
+.hero-card{display:flex;align-items:center;gap:2em;padding:1.6em 2em;background:var(--ui-panel);box-shadow:0 0 0 2px var(--ui-line), 0 0 0 4px #000;text-align:left;color:var(--ui-text)}
+.hero-card canvas{image-rendering:pixelated;image-rendering:crisp-edges}
+.hero-card .hero-name{color:var(--ui-accent);font-size:1.3em}
+
+@keyframes respirar{0%{transform:translateY(0)}50%{transform:translateY(-2%)}}
+
+@media (max-width:700px){
+  .creation{font-size:clamp(8px,2.6vw,12px);gap:1.6vh;padding:2.5vh 4vw}
+  .cr-body{grid-template-columns:1fr;align-content:start;overflow:auto}
+  .cr-panel{max-height:none;overflow:visible}
+  .cr-steps{gap:1.2em}
+  .cr-hint{display:none}
+}
+@media (prefers-reduced-motion:reduce){ .cr-sprite{animation:none} }
